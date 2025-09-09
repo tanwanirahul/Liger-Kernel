@@ -53,8 +53,8 @@ class LigerFusedLinearDPOFunction(LigerFusedLinearPreferenceBase):
 
         if loss_type == "sigmoid":
             logits_diff = beta * (chosen_logratios - rejected_logratios) + (2 * beta * chosen_logratios)
-            # print(f"Chosen Log Ratio: {chosen_logratios}, Rejected Log Ratio: {rejected_logratios}")
-            # print(f"Logits diff : {logits_diff} and its sigmoid: {F.sigmoid(logits_diff)}")
+            print(f"Chosen Log Ratio: {chosen_logratios}, Rejected Log Ratio: {rejected_logratios}")
+            print(f"Logits diff : {logits_diff} and its sigmoid: {F.logsigmoid(logits_diff)}")
             #adj_logits_diff = beta * (chosen_logratios.detach() - rejected_logratios.detach()) + (2 * beta * chosen_logratios.detach())
             # print(f"Adjusted logits diff : {adj_logits_diff} and its sigmoid: {F.sigmoid(adj_logits_diff)}")
             loss = -F.logsigmoid(logits_diff).sum() / (full_target.shape[0] // 2)
