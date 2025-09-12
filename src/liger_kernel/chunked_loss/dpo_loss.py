@@ -43,20 +43,16 @@ class LigerFusedLinearDPOFunction(LigerFusedLinearPreferenceBase):
         if ref_rejected_logps is None:
             ref_rejected_logps = torch.tensor(0.0, device=rejected_logps.device)
 
-        chosen_logratios = chosen_logps - ref_chosen_logps
-        rejected_logratios = rejected_logps - ref_rejected_logps
+        logprob_scaling_factor = 1 / 10.0
+
+        chosen_logratios = (chosen_logps - ref_chosen_logps) * logprob_scaling_factor
+        rejected_logratios = (rejected_logps - ref_rejected_logps) * logprob_scaling_factor
 
         chosen_rewards = beta * chosen_logratios
         rejected_rewards = beta * rejected_logratios
 
-        # print(f"Full target shape: {full_target.shape}, Chosen logps shape: {chosen_logps.shape}, Rejected logps shape: {rejected_logps.shape}")
-
         if loss_type == "sigmoid":
             logits_diff = beta * (chosen_logratios - rejected_logratios) + (beta * chosen_logratios)
-            # print(f"Chosen Log Ratio: {chosen_logratios[0].item()}, Rejected Log Ratio: {rejected_logratios[0].item()}")
-            print(f"Logits diff : {logits_diff[0].item()} and its sigmoid: {F.logsigmoid(logits_diff)[0].item()}")
-            #adj_logits_diff = beta * (chosen_logratios.detach() - rejected_logratios.detach()) + (2 * beta * chosen_logratios.detach())
-            # print(f"Adjusted logits diff : {adj_logits_diff} and its sigmoid: {F.sigmoid(adj_logits_diff)}")
             loss = -F.logsigmoid(logits_diff).sum() / (full_target.shape[0] // 2)
 
         elif loss_type == "apo_zero":
@@ -99,7 +95,8 @@ class LigerFusedLinearDPOFunction(LigerFusedLinearPreferenceBase):
                 f"Unsupported loss_type: {loss_type}. Supported types are: sigmoid, apo_zero, apo_down, sppo_hard, nca_pair"
             )
 
-        return loss, chosen_rewards, rejected_rewards
+        return loss, chosen_rewards, rejected_rewards, ref_chosen_logps, ref_rejected_logps
+    
 
     @classmethod
     def forward(
