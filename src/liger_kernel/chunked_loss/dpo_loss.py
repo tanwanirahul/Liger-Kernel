@@ -43,7 +43,7 @@ class LigerFusedLinearDPOFunction(LigerFusedLinearPreferenceBase):
         if ref_rejected_logps is None:
             ref_rejected_logps = torch.tensor(0.0, device=rejected_logps.device)
 
-        logprob_scaling_factor = 1 / 10.0
+        logprob_scaling_factor = 1 / 100.0
 
         chosen_logratios = (chosen_logps - ref_chosen_logps) * logprob_scaling_factor
         rejected_logratios = (rejected_logps - ref_rejected_logps) * logprob_scaling_factor
@@ -52,7 +52,7 @@ class LigerFusedLinearDPOFunction(LigerFusedLinearPreferenceBase):
         rejected_rewards = beta * rejected_logratios
 
         if loss_type == "sigmoid":
-            logits_diff = beta * (chosen_logratios - rejected_logratios) + (beta * chosen_logratios)
+            logits_diff = beta * (chosen_logratios - rejected_logratios) * (-1 if chosen_logratios < 0 else 1)
             loss = -F.logsigmoid(logits_diff).sum() / (full_target.shape[0] // 2)
 
         elif loss_type == "apo_zero":
