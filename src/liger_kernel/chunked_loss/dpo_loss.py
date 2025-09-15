@@ -52,7 +52,7 @@ class LigerFusedLinearDPOFunction(LigerFusedLinearPreferenceBase):
         rejected_rewards = beta * rejected_logratios
 
         if loss_type == "sigmoid":
-            logits_diff = beta * (chosen_logratios - rejected_logratios) * (-1 if chosen_logratios < 0 else 1)
+            logits_diff = beta * (chosen_logratios - rejected_logratios) + (4 * beta * chosen_logratios)
             loss = -F.logsigmoid(logits_diff).sum() / (full_target.shape[0] // 2)
 
         elif loss_type == "apo_zero":
