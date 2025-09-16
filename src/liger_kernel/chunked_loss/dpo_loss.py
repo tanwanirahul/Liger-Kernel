@@ -43,7 +43,7 @@ class LigerFusedLinearDPOFunction(LigerFusedLinearPreferenceBase):
         if ref_rejected_logps is None:
             ref_rejected_logps = torch.tensor(0.0, device=rejected_logps.device)
 
-        logprob_scaling_factor = 1 / 100.0
+        logprob_scaling_factor = 1 / 200.0
 
         chosen_logratios = (chosen_logps - ref_chosen_logps) * logprob_scaling_factor
         rejected_logratios = (rejected_logps - ref_rejected_logps) * logprob_scaling_factor
@@ -52,7 +52,7 @@ class LigerFusedLinearDPOFunction(LigerFusedLinearPreferenceBase):
         rejected_rewards = beta * rejected_logratios
 
         if loss_type == "sigmoid":
-            logits_diff = beta * (chosen_logratios - rejected_logratios) + (4 * beta * chosen_logratios)
+            logits_diff = beta * (chosen_logratios - rejected_logratios) + (6 * beta * chosen_logratios)
             loss = -F.logsigmoid(logits_diff).sum() / (full_target.shape[0] // 2)
 
         elif loss_type == "apo_zero":
@@ -95,7 +95,7 @@ class LigerFusedLinearDPOFunction(LigerFusedLinearPreferenceBase):
                 f"Unsupported loss_type: {loss_type}. Supported types are: sigmoid, apo_zero, apo_down, sppo_hard, nca_pair"
             )
 
-        return loss, chosen_rewards, rejected_rewards, ref_chosen_logps, ref_rejected_logps
+        return loss, chosen_rewards, rejected_rewards, ref_chosen_logps, ref_rejected_logps, 
     
 
     @classmethod
