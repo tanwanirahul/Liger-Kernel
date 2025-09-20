@@ -48,15 +48,24 @@ class LigerFusedLinearDPOFunction(LigerFusedLinearPreferenceBase):
         chosen_logratios = (chosen_logps - ref_chosen_logps) * logprob_scaling_factor
         rejected_logratios = (rejected_logps - ref_rejected_logps) * logprob_scaling_factor
 
+        max_reward_for_rejected_logratio = -1 / beta
+        clipped_rejected_logratios = rejected_logratios
+
+        if rejected_logratios > max_reward_for_rejected_logratio:
+                clipped_rejected_logratios = max_reward_for_rejected_logratio
+
         chosen_rewards = beta * chosen_logratios
         rejected_rewards = beta * rejected_logratios
-        minimum_loss_for_negative_chosen_rewards = 2
+        clipped_rejected_rewards = beta * clipped_rejected_logratios
+        
+        minimum_loss_for_negative_chosen_rewards = 0
 
         if loss_type == "sigmoid":
+
             if chosen_rewards < 0:
                 logits_diff = chosen_rewards - minimum_loss_for_negative_chosen_rewards
             else:
-                logits_diff = beta * (chosen_logratios - rejected_logratios)
+                logits_diff = beta * (chosen_logratios - clipped_rejected_logratios)
             loss = -F.logsigmoid(logits_diff).sum() / (full_target.shape[0] // 2)
 
         elif loss_type == "apo_zero":
@@ -99,7 +108,7 @@ class LigerFusedLinearDPOFunction(LigerFusedLinearPreferenceBase):
                 f"Unsupported loss_type: {loss_type}. Supported types are: sigmoid, apo_zero, apo_down, sppo_hard, nca_pair"
             )
 
-        return loss, chosen_rewards, rejected_rewards, ref_chosen_logps, ref_rejected_logps, 
+        return loss, chosen_rewards, rejected_rewards, ref_chosen_logps, ref_rejected_logps, clipped_rejected_rewards
     
 
     @classmethod
