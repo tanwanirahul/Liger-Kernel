@@ -51,8 +51,9 @@ class LigerFusedLinearDPOFunction(LigerFusedLinearPreferenceBase):
         max_reward_for_rejected_logratio = -1 / beta
         clipped_rejected_logratios = rejected_logratios
 
-        if rejected_logratios > max_reward_for_rejected_logratio:
-                clipped_rejected_logratios = max_reward_for_rejected_logratio
+
+        if rejected_logratios < max_reward_for_rejected_logratio:
+                clipped_rejected_logratios = torch.zeros_like(rejected_logratios) + max_reward_for_rejected_logratio
 
         chosen_rewards = beta * chosen_logratios
         rejected_rewards = beta * rejected_logratios
