@@ -51,20 +51,16 @@ class LigerFusedLinearDPOFunction(LigerFusedLinearPreferenceBase):
         max_reward_for_rejected_logratio = -0.5 / beta
         clipped_rejected_logratios = rejected_logratios
 
-
         if rejected_logratios < max_reward_for_rejected_logratio:
                 clipped_rejected_logratios = torch.zeros_like(rejected_logratios) + max_reward_for_rejected_logratio
 
         chosen_rewards = beta * chosen_logratios
         rejected_rewards = beta * rejected_logratios
         clipped_rejected_rewards = beta * clipped_rejected_logratios
-        
-        minimum_loss_for_negative_chosen_rewards = 0
 
         if loss_type == "sigmoid":
-
             if chosen_rewards < 0:
-                logits_diff = chosen_rewards - minimum_loss_for_negative_chosen_rewards
+                logits_diff = chosen_rewards
             else:
                 logits_diff = beta * ((2 * chosen_logratios) - clipped_rejected_logratios)
             loss = -F.logsigmoid(logits_diff).sum() / (full_target.shape[0] // 2)
