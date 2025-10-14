@@ -35,9 +35,14 @@ class LigerFusedLinearGRPOFunction(LigerFusedLinearPPOBase):
         **kwargs,
     ):
         """GRPO Loss Function matching GRPOTrainer implementation."""
+        
+        
         per_token_logps = log_probs.gather(dim=-1, index=selected_token_ids.unsqueeze(-1)).squeeze(
             -1
         )  # (batch_size, seq_len)
+
+        entropies = -(torch.exp(log_probs) * log_probs).sum(-1)
+        mean_entropy = None
 
         # Get reference model probabilities
         if ref_per_token_logps is None:
@@ -53,11 +58,14 @@ class LigerFusedLinearGRPOFunction(LigerFusedLinearPPOBase):
         old_per_token_logps = old_per_token_logps if old_per_token_logps is not None else per_token_logps.detach()
         log_ratio = per_token_logps - old_per_token_logps
 
+        
         if importance_sampling_level == "token":
             log_importance_weights = log_ratio
+            mean_entropy = (entropies * attention_mask).sum() / torch.clamp(attention_mask.sum(), min=1.0)
         elif importance_sampling_level == "sequence":
             log_importance_weights = (log_ratio * attention_mask).sum(-1) / attention_mask.sum(-1).clamp(min=1.0)
             log_importance_weights = log_importance_weights.unsqueeze(-1)
+            mean_entropy = entropies.mean()
         else:
             raise ValueError(
                 f"Unknown importance sampling level: {importance_sampling_level}. Possible values are 'token' "
@@ -101,6 +109,9 @@ class LigerFusedLinearGRPOFunction(LigerFusedLinearPPOBase):
         metrics = []
         if beta != 0.0:
             metrics.append(((kl_div * attention_mask).sum() / torch.clamp(full_attention_mask.sum(), min=1.0)))
+
+        # Add mean_entropy to metrics
+        metrics.append(mean_entropy)
 
         # Adjust clipping metric calculation based on importance sampling level
         if importance_sampling_level == "token":
