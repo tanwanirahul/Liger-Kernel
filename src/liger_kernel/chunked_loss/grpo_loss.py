@@ -82,24 +82,21 @@ class LigerFusedLinearGRPOFunction(LigerFusedLinearPPOBase):
         per_token_loss = -torch.min(per_token_loss1, per_token_loss2)
 
 
-        high_loss_values = torch.zeros((), device=per_token_loss.device)
-        high_kl_div_values = torch.zeros((), device=per_token_loss.device)
-        token_ids_high_loss = torch.zeros((), device=per_token_loss.device)
-        token_ids_high_kl_div = torch.zeros((), device=per_token_loss.device)
-
         #filter tokens that cross max_per_token_loss_value
-        selected_tokens_crossing_max_loss = (per_token_loss > max_per_token_loss_value) & (attention_mask == 1)
-        token_ids_high_loss = selected_token_ids[selected_tokens_crossing_max_loss]
-        high_loss_values = per_token_loss[selected_tokens_crossing_max_loss]
+        # selected_tokens_crossing_max_loss = (per_token_loss > max_per_token_loss_value) & (attention_mask == 1)
+        # token_ids_high_loss = selected_token_ids[selected_tokens_crossing_max_loss]
+        # high_loss_values = per_token_loss[selected_tokens_crossing_max_loss]
+
+        per_token_loss_before_kl = per_token_loss.clone()
 
         if beta != 0.0:
             # Compute KL penalty (approximates KL[per_token_logps, ref_per_token_logps])
             kl_div = k3_loss_fn(ref_per_token_logps, per_token_logps)
             
             #filter tokens that cross max_per_token_kl_div_value
-            selected_tokens_crossing_max_kl_div = (kl_div > max_per_token_kl_div_value) & (attention_mask == 1)
-            token_ids_high_kl_div = selected_token_ids[selected_tokens_crossing_max_kl_div]
-            high_kl_div_values = kl_div[selected_tokens_crossing_max_kl_div]
+            # selected_tokens_crossing_max_kl_div = (kl_div > max_per_token_kl_div_value) & (attention_mask == 1)
+            # token_ids_high_kl_div = selected_token_ids[selected_tokens_crossing_max_kl_div]
+            # high_kl_div_values = kl_div[selected_tokens_crossing_max_kl_div]
 
             # Combine losses
             per_token_loss = per_token_loss + beta * kl_div
@@ -145,10 +142,8 @@ class LigerFusedLinearGRPOFunction(LigerFusedLinearPPOBase):
             is_clipped = is_clipped.unsqueeze(1).expand_as(attention_mask)
 
         metrics.append((is_clipped * attention_mask).sum() / torch.clamp(full_attention_mask.sum(), min=1.0))
-        metrics.append(token_ids_high_loss)
-        metrics.append(high_loss_values)
-        metrics.append(token_ids_high_kl_div)
-        metrics.append(high_kl_div_values)
+        metrics.append(per_token_loss_before_kl)
+        metrics.append(kl_div)
 
         return loss, metrics
 
