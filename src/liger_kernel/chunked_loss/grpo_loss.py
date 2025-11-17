@@ -144,6 +144,9 @@ class LigerFusedLinearGRPOFunction(LigerFusedLinearPPOBase):
         metrics.append((is_clipped * attention_mask).sum() / torch.clamp(full_attention_mask.sum(), min=1.0))
         metrics.append(per_token_loss_before_kl)
         metrics.append(kl_div)
+        metrics.append(per_token_logps)
+        metrics.append(old_per_token_logps)
+        metrics.append(ref_per_token_logps)
 
         return loss, metrics
 
