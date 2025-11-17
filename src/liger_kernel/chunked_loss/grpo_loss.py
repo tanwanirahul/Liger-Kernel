@@ -82,16 +82,15 @@ class LigerFusedLinearGRPOFunction(LigerFusedLinearPPOBase):
         per_token_loss = -torch.min(per_token_loss1, per_token_loss2)
 
 
-        high_loss_values = None
-        high_kl_div_values = None
-        token_ids_high_loss = None
-        token_ids_high_kl_div = None
+        high_loss_values = torch.zeros((), device=per_token_loss.device)
+        high_kl_div_values = torch.zeros((), device=per_token_loss.device)
+        token_ids_high_loss = torch.zeros((), device=per_token_loss.device)
+        token_ids_high_kl_div = torch.zeros((), device=per_token_loss.device)
 
         #filter tokens that cross max_per_token_loss_value
         selected_tokens_crossing_max_loss = (per_token_loss > max_per_token_loss_value) & (attention_mask == 1)
-        if selected_tokens_crossing_max_loss.any():
-            token_ids_high_loss = selected_token_ids[selected_tokens_crossing_max_loss]
-            high_loss_values = per_token_loss[selected_tokens_crossing_max_loss]
+        token_ids_high_loss = selected_token_ids[selected_tokens_crossing_max_loss]
+        high_loss_values = per_token_loss[selected_tokens_crossing_max_loss]
 
         if beta != 0.0:
             # Compute KL penalty (approximates KL[per_token_logps, ref_per_token_logps])
@@ -99,9 +98,8 @@ class LigerFusedLinearGRPOFunction(LigerFusedLinearPPOBase):
             
             #filter tokens that cross max_per_token_kl_div_value
             selected_tokens_crossing_max_kl_div = (kl_div > max_per_token_kl_div_value) & (attention_mask == 1)
-            if selected_tokens_crossing_max_kl_div.any():
-                token_ids_high_kl_div = selected_token_ids[selected_tokens_crossing_max_kl_div]
-                high_kl_div_values = kl_div[selected_tokens_crossing_max_kl_div]
+            token_ids_high_kl_div = selected_token_ids[selected_tokens_crossing_max_kl_div]
+            high_kl_div_values = kl_div[selected_tokens_crossing_max_kl_div]
 
             # Combine losses
             per_token_loss = per_token_loss + beta * kl_div
