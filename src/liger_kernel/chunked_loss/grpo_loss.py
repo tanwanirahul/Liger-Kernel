@@ -35,8 +35,8 @@ class LigerFusedLinearGRPOFunction(LigerFusedLinearPPOBase):
     ):
         """GRPO Loss Function matching GRPOTrainer implementation."""
 
-        max_per_token_loss_value = 10.0
-        max_per_token_kl_div_value = 1.0
+        min_kl = 0.1
+        max_kl = 1000.0
 
         per_token_logps = log_probs.gather(dim=-1, index=selected_token_ids.unsqueeze(-1)).squeeze(
             -1
@@ -99,7 +99,7 @@ class LigerFusedLinearGRPOFunction(LigerFusedLinearPPOBase):
             # high_kl_div_values = kl_div[selected_tokens_crossing_max_kl_div]
 
             # Combine losses
-            per_token_loss = per_token_loss + beta * kl_div
+            per_token_loss = per_token_loss + beta * torch.clamp(kl_div, min_kl, max_kl)
 
         # Note: We normalize by the number of tokens in the batch (using full_attention_mask),
         # which is consistent with the DAPO loss implementation (https://arxiv.org/html/2503.14476v1)
