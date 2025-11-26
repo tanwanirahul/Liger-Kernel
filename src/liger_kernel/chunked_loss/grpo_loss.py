@@ -81,25 +81,11 @@ class LigerFusedLinearGRPOFunction(LigerFusedLinearPPOBase):
         per_token_loss2 = coef_2 * advantages.unsqueeze(1)
         per_token_loss = -torch.min(per_token_loss1, per_token_loss2)
 
-
-        #filter tokens that cross max_per_token_loss_value
-        # selected_tokens_crossing_max_loss = (per_token_loss > max_per_token_loss_value) & (attention_mask == 1)
-        # token_ids_high_loss = selected_token_ids[selected_tokens_crossing_max_loss]
-        # high_loss_values = per_token_loss[selected_tokens_crossing_max_loss]
-
-        per_token_loss_before_kl = per_token_loss.clone()
-
         if beta != 0.0:
             # Compute KL penalty (approximates KL[per_token_logps, ref_per_token_logps])
             kl_div = k3_loss_fn(ref_per_token_logps, per_token_logps)
-            
-            #filter tokens that cross max_per_token_kl_div_value
-            # selected_tokens_crossing_max_kl_div = (kl_div > max_per_token_kl_div_value) & (attention_mask == 1)
-            # token_ids_high_kl_div = selected_token_ids[selected_tokens_crossing_max_kl_div]
-            # high_kl_div_values = kl_div[selected_tokens_crossing_max_kl_div]
-
             # Combine losses
-            #per_token_loss = per_token_loss + beta * torch.clamp(kl_div, min_kl, max_kl)
+            per_token_loss = per_token_loss + beta * torch.clamp(kl_div, min_kl, max_kl)
 
         # Note: We normalize by the number of tokens in the batch (using full_attention_mask),
         # which is consistent with the DAPO loss implementation (https://arxiv.org/html/2503.14476v1)
@@ -126,6 +112,10 @@ class LigerFusedLinearGRPOFunction(LigerFusedLinearPPOBase):
         if beta != 0.0:
             metrics.append(((kl_div * attention_mask).sum() / torch.clamp(full_attention_mask.sum(), min=1.0)))
 
+        # Compute KL between a behaviour policy and current policy.
+        kl_div_behaviour = k3_loss_fn(old_per_token_logps, per_token_logps)
+        mean_kl_div_behaviour =  (kl_div_behaviour * attention_mask).sum() / torch.clamp(full_attention_mask.sum(), min=1.0)
+        
         # Add mean_entropy to metrics
         metrics.append(mean_entropy)
 
@@ -142,12 +132,8 @@ class LigerFusedLinearGRPOFunction(LigerFusedLinearPPOBase):
             is_clipped = is_clipped.unsqueeze(1).expand_as(attention_mask)
 
         metrics.append((is_clipped * attention_mask).sum() / torch.clamp(full_attention_mask.sum(), min=1.0))
-        metrics.append(per_token_loss_before_kl)
-        metrics.append(kl_div)
-        metrics.append(per_token_logps)
-        metrics.append(old_per_token_logps)
-        metrics.append(ref_per_token_logps)
-
+        metrics.append(mean_kl_div_behaviour)
+        
         return loss, metrics
 
     @classmethod
