@@ -42,6 +42,9 @@ class LigerFusedLinearGRPOFunction(LigerFusedLinearPPOBase):
             -1
         )  # (batch_size, seq_len)
 
+	# Clamp the logs to 1e-9
+	per_token_logps = torch.clamp(per_token_logps, min=-20.7)
+
         entropies = -(torch.exp(log_probs) * log_probs).sum(-1)
         mean_entropy = None
 
